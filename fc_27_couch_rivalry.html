@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Kanaba Cup | FC 27 Live Leaderboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Chakra Petch', 'sans-serif'],
+          },
+          colors: {
+            pitch: {
+              950: '#070b10',
+              900: '#0d131c',
+              800: '#141d2b',
+              700: '#1e2b3e',
+            },
+            volt: '#c8ff00',
+            cyan: '#00f0ff',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #070b10;
+      color: #f8fafc;
+      background-image:
+        radial-gradient(circle at 15% 0%, rgba(200, 255, 0, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 85% 15%, rgba(0, 240, 255, 0.07) 0%, transparent 45%);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .glass-card {
+      background: rgba(13, 19, 28, 0.86);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .volt-glow {
+      box-shadow: 0 0 22px rgba(200, 255, 0, 0.25);
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-14 antialiased selection:bg-volt selection:text-pitch-950">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-40 border-b border-white/10 bg-pitch-950/90 backdrop-blur-md">
+    <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-volt to-amber-400 text-pitch-950 flex items-center justify-center font-display font-bold text-lg shadow-lg volt-glow shrink-0">
+          🏆
+        </div>
+        <div class="truncate">
+          <h1 class="font-display font-bold text-xl sm:text-2xl tracking-wide uppercase text-white leading-none truncate">
+            Kanaba Cup
+          </h1>
+          <p class="text-[11px] font-medium text-slate-400 tracking-wider uppercase mt-1 flex items-center gap-1.5">
+            <span>PS5 FC 27 Official Standings</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- Live Sync Status Pill -->
+        <div id="syncBadge" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+          <span id="syncDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="syncText" class="hidden sm:inline">Live</span>
+        </div>
+
+        <!-- Admin Mode Trigger -->
+        <button id="adminBtn" onclick="openAdminModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-200 transition">
+          <span id="adminIcon">🔒</span>
+          <span id="adminBtnText">Admin</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Permission / Error Alert Banner (Hidden unless needed) -->
+  <div id="alertBanner" class="hidden max-w-4xl mx-auto px-4 pt-4">
+    <div class="rounded-xl bg-rose-500/15 border border-rose-500/40 p-3.5 flex items-center justify-between gap-3 text-xs text-rose-200">
+      <span id="alertMessage">Database error.</span>
+      <button onclick="fetchCloudData()" class="px-3 py-1.5 rounded-lg bg-rose-500 text-white font-bold shrink-0">Retry</button>
+    </div>
+  </div>
+
+  <main class="max-w-4xl mx-auto px-4 pt-5 space-y-6">
+
+    <!-- Mode Status Banner -->
+    <div id="modeBanner" class="glass-card rounded-2xl px-4 py-3 flex items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2 text-slate-300">
+        <span class="px-2 py-0.5 rounded bg-cyan/15 text-cyan font-bold uppercase tracking-wider text-[10px]">Spectator View</span>
+        <span>Live read-only leaderboard. Only Admin can log or edit scores.</span>
+      </div>
+      <button onclick="openAdminModal()" class="text-volt font-bold hover:underline shrink-0">Admin Login →</button>
+    </div>
+
+    <!-- ADMIN ONLY: Match Logger Card -->
+    <section id="adminMatchLogger" class="hidden glass-card rounded-2xl p-5 border-volt/30 shadow-xl">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-volt"></span>
+          <h2 class="font-display font-bold text-lg uppercase tracking-wide text-white">Log FC 27 Match Result</h2>
+        </div>
+        <span class="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-volt/15 text-volt">Admin Unlocked</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-11 gap-4 items-center">
+        <!-- Home Player -->
+        <div class="md:col-span-4 space-y-2 bg-pitch-900/90 p-3.5 rounded-xl border border-white/5">
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Home Player</label>
+          <select id="homePlayerSelect" class="w-full bg-pitch-800 border border-white/10 rounded-lg px-3 py-2 text-sm font-semibold text-white focus:outline-none focus:border-volt"></select>
+          <input id="homeClubInput" type="text" list="fc27Clubs" placeholder="Club (e.g. Real Madrid)" class="w-full bg-pitch-800/70 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-volt" />
+        </div>
+
+        <!-- Scoreboard Steppers -->
+        <div class="md:col-span-3 flex items-center justify-center gap-3 py-2">
+          <div class="flex flex-col items-center gap-1.5">
+            <button type="button" onclick="adjustScore('home', 1)" class="w-11 h-9 rounded-lg bg-white/10 hover:bg-volt hover:text-pitch-950 font-bold text-lg transition">+</button>
+            <input id="homeScore" type="number" min="0" max="99" value="0" class="w-14 h-14 text-center font-display font-bold text-3xl bg-pitch-950 border border-white/15 rounded-xl text-volt focus:outline-none focus:border-volt" />
+            <button type="button" onclick="adjustScore('home', -1)" class="w-11 h-9 rounded-lg bg-white/5 hover:bg-white/15 font-bold text-lg text-slate-300 transition">−</button>
+          </div>
+
+          <span class="font-display font-bold text-xl text-slate-500">VS</span>
+
+          <div class="flex flex-col items-center gap-1.5">
+            <button type="button" onclick="adjustScore('away', 1)" class="w-11 h-9 rounded-lg bg-white/10 hover:bg-cyan hover:text-pitch-950 font-bold text-lg transition">+</button>
+            <input id="awayScore" type="number" min="0" max="99" value="0" class="w-14 h-14 text-center font-display font-bold text-3xl bg-pitch-950 border border-white/15 rounded-xl text-cyan focus:outline-none focus:border-cyan" />
+            <button type="button" onclick="adjustScore('away', -1)" class="w-11 h-9 rounded-lg bg-white/5 hover:bg-white/15 font-bold text-lg text-slate-300 transition">−</button>
+          </div>
+        </div>
+
+        <!-- Away Player -->
+        <div class="md:col-span-4 space-y-2 bg-pitch-900/90 p-3.5 rounded-xl border border-white/5">
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Away Player</label>
+          <select id="awayPlayerSelect" class="w-full bg-pitch-800 border border-white/10 rounded-lg px-3 py-2 text-sm font-semibold text-white focus:outline-none focus:border-cyan"></select>
+          <input id="awayClubInput" type="text" list="fc27Clubs" placeholder="Club (e.g. Manchester City)" class="w-full bg-pitch-800/70 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan" />
+        </div>
+      </div>
+
+      <!-- Extra Options & Submit -->
+      <div class="mt-4 pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-4 text-xs text-slate-300">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input id="aetCheck" type="checkbox" class="rounded bg-pitch-800 border-white/20 text-volt focus:ring-0" />
+            <span>Extra Time (AET)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input id="penCheck" type="checkbox" class="rounded bg-pitch-800 border-white/20 text-volt focus:ring-0" />
+            <span>Penalties</span>
+          </label>
+          <input id="matchNote" type="text" placeholder="Optional note (e.g. 90' winner)" class="bg-pitch-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-volt w-48" />
+        </div>
+
+        <button id="saveMatchBtn" onclick="logMatch()" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-volt hover:brightness-110 text-pitch-950 font-display font-bold uppercase tracking-wider text-sm shadow-lg volt-glow transition">
+          Save Match Result
+        </button>
+      </div>
+    </section>
+
+    <!-- Tournament Summary Stats -->
+    <section class="grid grid-cols-3 gap-3">
+      <div class="glass-card rounded-2xl p-4 text-center">
+        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Matches Played</p>
+        <p id="statMatches" class="font-display font-bold text-2xl sm:text-3xl text-white mt-1">0</p>
+      </div>
+      <div class="glass-card rounded-2xl p-4 text-center">
+        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Goals</p>
+        <p id="statGoals" class="font-display font-bold text-2xl sm:text-3xl text-volt mt-1">0</p>
+      </div>
+      <div class="glass-card rounded-2xl p-4 text-center">
+        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Goals / Match</p>
+        <p id="statAvgGoals" class="font-display font-bold text-2xl sm:text-3xl text-cyan mt-1">0.0</p>
+      </div>
+    </section>
+
+    <!-- Live Standings Leaderboard -->
+    <section class="glass-card rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-white/10 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 class="font-display font-bold text-lg uppercase tracking-wide text-white">Kanaba Cup Standings</h2>
+          <p class="text-xs text-slate-400">3 PTS Win · 1 PT Draw · Tiebreaker: Goal Difference</p>
+        </div>
+
+        <!-- ADMIN ONLY: Add Player Control -->
+        <div id="adminPlayerManager" class="hidden flex items-center gap-2">
+          <input id="newPlayerInput" type="text" placeholder="Add player name..." class="bg-pitch-900 border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-volt w-36 sm:w-44" />
+          <button onclick="addPlayer()" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-volt hover:text-pitch-950 text-xs font-bold text-white transition">
+            + Add
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-white/10 text-[11px] font-bold uppercase tracking-wider text-slate-400 bg-pitch-900/50">
+              <th class="py-3 pl-5 pr-2 w-10">#</th>
+              <th class="py-3 px-3">Player</th>
+              <th class="py-3 px-2 text-center">MP</th>
+              <th class="py-3 px-2 text-center">W</th>
+              <th class="py-3 px-2 text-center">D</th>
+              <th class="py-3 px-2 text-center">L</th>
+              <th class="py-3 px-2 text-center hidden sm:table-cell">GF</th>
+              <th class="py-3 px-2 text-center hidden sm:table-cell">GA</th>
+              <th class="py-3 px-2 text-center">GD</th>
+              <th class="py-3 px-3 text-center text-volt">PTS</th>
+              <th class="py-3 pl-2 pr-5 text-right hidden md:table-cell">Form</th>
+            </tr>
+          </thead>
+          <tbody id="standingsBody" class="divide-y divide-white/5 text-sm">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Match History Feed -->
+    <section class="glass-card rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-display font-bold text-lg uppercase tracking-wide text-white">Recent Match Results</h2>
+        <span id="historyCount" class="text-xs font-semibold text-slate-400">0 matches</span>
+      </div>
+
+      <div id="matchHistoryList" class="space-y-3">
+        <!-- Populated dynamically -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Admin Login Modal -->
+  <div id="adminModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card rounded-2xl max-w-md w-full p-6 border border-white/15 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-display font-bold text-xl uppercase text-white">Admin Access</h3>
+        <button onclick="closeAdminModal()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+
+      <!-- Logged Out Form -->
+      <div id="adminLoginForm" class="space-y-3">
+        <p class="text-xs text-slate-400 leading-relaxed">
+          Sign in with your Firebase Admin account to unlock adding/deleting scores and managing players.
+        </p>
+
+        <div>
+          <label class="block text-[11px] font-bold uppercase text-slate-400 mb-1">Firebase Web API Key</label>
+          <input id="fbApiKeyInput" type="password" placeholder="AIzaSy..." class="w-full bg-pitch-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-volt" />
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold uppercase text-slate-400 mb-1">Admin Email</label>
+          <input id="adminEmailInput" type="email" placeholder="you@example.com" class="w-full bg-pitch-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-volt" />
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold uppercase text-slate-400 mb-1">Admin Password</label>
+          <input id="adminPassInput" type="password" placeholder="••••••••" class="w-full bg-pitch-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-volt" />
+        </div>
+
+        <p id="adminAuthError" class="hidden text-xs text-rose-400 font-medium"></p>
+
+        <button id="adminSignInBtn" onclick="signInAdmin()" class="w-full py-3 rounded-xl bg-volt hover:brightness-110 text-pitch-950 font-display font-bold uppercase tracking-wider text-sm transition">
+          Unlock Admin Controls
+        </button>
+      </div>
+
+      <!-- Logged In State -->
+      <div id="adminLoggedInView" class="hidden space-y-4">
+        <div class="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300">
+          Signed in as <strong id="loggedInEmail" class="text-white"></strong>. You have full edit permissions.
+        </div>
+        <button onclick="signOutAdmin()" class="w-full py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 font-bold text-xs uppercase tracking-wider transition">
+          Lock & Sign Out
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FC 27 Clubs Datalist -->
+  <datalist id="fc27Clubs">
+    <option value="Real Madrid">
+    <option value="Manchester City">
+    <option value="Arsenal">
+    <option value="FC Barcelona">
+    <option value="Liverpool">
+    <option value="Paris Saint-Germain">
+    <option value="Bayern Munich">
+    <option value="Inter Milan">
+    <option value="Bayer Leverkusen">
+    <option value="Atlético Madrid">
+    <option value="Juventus">
+    <option value="AC Milan">
+    <option value="Chelsea">
+    <option value="Manchester United">
+    <option value="Tottenham Hotspur">
+    <option value="Borussia Dortmund">
+    <option value="Al-Hilal">
+    <option value="Al-Nassr">
+    <option value="France">
+    <option value="Argentina">
+    <option value="Spain">
+    <option value="England">
+    <option value="Brazil">
+    <option value="Portugal">
+  </datalist>
+
+  <script>
+    // Hardcoded Firebase Realtime Database URL & Room Path
+    const DB_URL = "https://sewify-kanaba-scores-default-rtdb.asia-southeast1.firebasedatabase.app";
+    const ROOM_PATH = "rooms/KANABA-CUP-FC27";
+
+    // Application State
+    let state = {
+      players: ["Sewify"],
+      matches: []
+    };
+
+    // Admin Auth State (Persisted locally on Admin's phone only)
+    let auth = {
+      apiKey: localStorage.getItem("kc_fb_apikey") || "",
+      idToken: localStorage.getItem("kc_fb_token") || "",
+      refreshToken: localStorage.getItem("kc_fb_refresh") || "",
+      email: localStorage.getItem("kc_fb_email") || ""
+    };
+
+    function isAdmin() {
+      return Boolean(auth.idToken && auth.apiKey);
+    }
+
+    // Sanitize players list: always remove "Kanaba" if ever present
+    function sanitizePlayers(list) {
+      const cleaned = (Array.isArray(list) ? list : ["Sewify"])
+        .map(p => String(p || "").trim())
+        .filter(p => p.length > 0 && p.toLowerCase() !== "kanaba");
+      return cleaned.length > 0 ? Array.from(new Set(cleaned)) : ["Sewify"];
+    }
+
+    // Fetch live data from Firebase Realtime Database
+    async function fetchCloudData() {
+      setSyncStatus("syncing", "Syncing...");
+      try {
+        const res = await fetch(`${DB_URL}/${ROOM_PATH}.json`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        if (data) {
+          const rawPlayers = Array.isArray(data.players) ? data.players : Object.values(data.players || {});
+          const rawMatches = Array.isArray(data.matches) ? data.matches : Object.values(data.matches || {});
+          const cleanedPlayers = sanitizePlayers(rawPlayers);
+
+          state.players = cleanedPlayers;
+          state.matches = rawMatches.filter(Boolean).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+          // If "Kanaba" was still sitting in the database and Admin is signed in, clean it permanently
+          if (isAdmin() && rawPlayers.some(p => String(p).trim().toLowerCase() === "kanaba")) {
+            await saveCloudData();
+          }
+        } else if (isAdmin()) {
+          await saveCloudData();
+        }
+
+        hideAlert();
+        setSyncStatus("live", "Live Synced");
+        renderAll();
+      } catch (err) {
+        console.error(err);
+        setSyncStatus("error", "Offline");
+        showAlert("Could not reach database. Check connection or Firebase Rules.");
+      }
+    }
+
+    // Refresh expired Firebase ID Token automatically
+    async function refreshAdminToken() {
+      if (!auth.refreshToken || !auth.apiKey) return false;
+      try {
+        const res = await fetch(`https://securetoken.googleapis.com/v1/token?key=${encodeURIComponent(auth.apiKey)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(auth.refreshToken)}`
+        });
+        const data = await res.json();
+        if (!res.ok || !data.id_token) return false;
+        auth.idToken = data.id_token;
+        auth.refreshToken = data.refresh_token;
+        localStorage.setItem("kc_fb_token", auth.idToken);
+        localStorage.setItem("kc_fb_refresh", auth.refreshToken);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    // Save data to Firebase Realtime Database (Requires valid Admin ID Token)
+    async function saveCloudData(retry = true) {
+      if (!isAdmin()) {
+        openAdminModal();
+        return false;
+      }
+
+      setSyncStatus("syncing", "Saving...");
+      try {
+        const url = `${DB_URL}/${ROOM_PATH}.json?auth=${encodeURIComponent(auth.idToken)}`;
+        const res = await fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            players: sanitizePlayers(state.players),
+            matches: state.matches,
+            updatedAt: Date.now()
+          })
+        });
+
+        if (res.status === 401 && retry) {
+          const refreshed = await refreshAdminToken();
+          if (refreshed) return saveCloudData(false);
+          signOutAdmin();
+          showAlert("Admin session expired. Please sign in again.");
+          return false;
+        }
+
+        if (res.status === 403) {
+          setSyncStatus("error", "Blocked");
+          showAlert("Write denied: Make sure your Firebase Realtime Database Rules allow your Admin UID.");
+          return false;
+        }
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        hideAlert();
+        setSyncStatus("live", "Live Synced");
+        return true;
+      } catch (err) {
+        console.error(err);
+        setSyncStatus("error", "Save Failed");
+        showAlert("Failed to save to Firebase. Check your internet connection.");
+        return false;
+      }
+    }
+
+    // Admin Sign-In via Firebase Auth REST API
+    async function signInAdmin() {
+      const apiKey = document.getElementById("fbApiKeyInput").value.trim();
+      const email = document.getElementById("adminEmailInput").value.trim();
+      const password = document.getElementById("adminPassInput").value;
+      const errEl = document.getElementById("adminAuthError");
+      const btn = document.getElementById("adminSignInBtn");
+
+      errEl.classList.add("hidden");
+      if (!apiKey || !email || !password) {
+        errEl.textContent = "Please fill in your Firebase API Key, Email, and Password.";
+        errEl.classList.remove("hidden");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Verifying...";
+
+      try {
+        const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(apiKey)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, returnSecureToken: true })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error?.message || "Invalid login credentials.");
+        }
+
+        auth = {
+          apiKey,
+          idToken: data.idToken,
+          refreshToken: data.refreshToken,
+          email: data.email || email
+        };
+
+        localStorage.setItem("kc_fb_apikey", auth.apiKey);
+        localStorage.setItem("kc_fb_token", auth.idToken);
+        localStorage.setItem("kc_fb_refresh", auth.refreshToken);
+        localStorage.setItem("kc_fb_email", auth.email);
+
+        closeAdminModal();
+        updateAdminUI();
+        await fetchCloudData();
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove("hidden");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Unlock Admin Controls";
+      }
+    }
+
+    function signOutAdmin() {
+      auth.idToken = "";
+      auth.refreshToken = "";
+      localStorage.removeItem("kc_fb_token");
+      localStorage.removeItem("kc_fb_refresh");
+      closeAdminModal();
+      updateAdminUI();
+      renderAll();
+    }
+
+    // Match & Player Actions (Admin Only)
+    function adjustScore(side, delta) {
+      const input = document.getElementById(side === "home" ? "homeScore" : "awayScore");
+      const next = Math.max(0, (parseInt(input.value, 10) || 0) + delta);
+      input.value = next;
+    }
+
+    async function addPlayer() {
+      if (!isAdmin()) return;
+      const input = document.getElementById("newPlayerInput");
+      const name = input.value.trim();
+      if (!name) return;
+      if (name.toLowerCase() === "kanaba") {
+        alert("Kanaba is excluded from the players list.");
+        input.value = "";
+        return;
+      }
+      if (state.players.some(p => p.toLowerCase() === name.toLowerCase())) {
+        alert("Player already exists!");
+        return;
+      }
+
+      state.players.push(name);
+      input.value = "";
+      renderAll();
+      await saveCloudData();
+    }
+
+    async function removePlayer(name) {
+      if (!isAdmin()) return;
+      if (state.players.length <= 1) {
+        alert("At least one player must remain in the roster.");
+        return;
+      }
+      if (!confirm(`Remove ${name} from the roster?`)) return;
+
+      state.players = state.players.filter(p => p !== name);
+      renderAll();
+      await saveCloudData();
+    }
+
+    async function logMatch() {
+      if (!isAdmin()) return;
+      const homePlayer = document.getElementById("homePlayerSelect").value;
+      const awayPlayer = document.getElementById("awayPlayerSelect").value;
+      const homeScore = Math.max(0, parseInt(document.getElementById("homeScore").value, 10) || 0);
+      const awayScore = Math.max(0, parseInt(document.getElementById("awayScore").value, 10) || 0);
+      const homeClub = document.getElementById("homeClubInput").value.trim();
+      const awayClub = document.getElementById("awayClubInput").value.trim();
+      const aet = document.getElementById("aetCheck").checked;
+      const pen = document.getElementById("penCheck").checked;
+      const note = document.getElementById("matchNote").value.trim();
+
+      if (!homePlayer || !awayPlayer) {
+        alert("Please add at least two players before logging a match.");
+        return;
+      }
+      if (homePlayer === awayPlayer) {
+        alert("Home and Away players must be different!");
+        return;
+      }
+
+      const match = {
+        id: "m_" + Date.now(),
+        homePlayer,
+        awayPlayer,
+        homeScore,
+        awayScore,
+        homeClub,
+        awayClub,
+        aet,
+        pen,
+        note,
+        timestamp: Date.now()
+      };
+
+      const btn = document.getElementById("saveMatchBtn");
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+
+      state.matches.unshift(match);
+      renderAll();
+      const ok = await saveCloudData();
+
+      btn.disabled = false;
+      btn.textContent = "Save Match Result";
+
+      if (ok) {
+        document.getElementById("homeScore").value = 0;
+        document.getElementById("awayScore").value = 0;
+        document.getElementById("aetCheck").checked = false;
+        document.getElementById("penCheck").checked = false;
+        document.getElementById("matchNote").value = "";
+      }
+    }
+
+    async function deleteMatch(id) {
+      if (!isAdmin()) return;
+      if (!confirm("Delete this match result?")) return;
+      state.matches = state.matches.filter(m => m.id !== id);
+      renderAll();
+      await saveCloudData();
+    }
+
+    // Standings Calculation
+    function computeStandings() {
+      const table = {};
+      state.players.forEach(p => {
+        table[p] = { name: p, mp: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] };
+      });
+
+      const chronological = [...state.matches].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+      chronological.forEach(m => {
+        if (!table[m.homePlayer]) {
+          table[m.homePlayer] = { name: m.homePlayer, mp: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] };
+        }
+        if (!table[m.awayPlayer]) {
+          table[m.awayPlayer] = { name: m.awayPlayer, mp: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] };
+        }
+
+        const h = table[m.homePlayer];
+        const a = table[m.awayPlayer];
+
+        h.mp++; a.mp++;
+        h.gf += m.homeScore; h.ga += m.awayScore;
+        a.gf += m.awayScore; a.ga += m.homeScore;
+
+        if (m.homeScore > m.awayScore) {
+          h.w++; h.pts += 3; h.form.push("W");
+          a.l++; a.form.push("L");
+        } else if (m.awayScore > m.homeScore) {
+          a.w++; a.pts += 3; a.form.push("W");
+          h.l++; h.form.push("L");
+        } else {
+          h.d++; h.pts += 1; h.form.push("D");
+          a.d++; a.pts += 1; a.form.push("D");
+        }
+      });
+
+      return Object.values(table)
+        .map(row => ({ ...row, gd: row.gf - row.ga }))
+        .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.name.localeCompare(b.name));
+    }
+
+    // Render Functions
+    function renderAll() {
+      updateAdminUI();
+      renderPlayerSelects();
+      renderStandings();
+      renderMatches();
+      renderStats();
+    }
+
+    function updateAdminUI() {
+      const admin = isAdmin();
+      document.getElementById("adminMatchLogger").classList.toggle("hidden", !admin);
+      document.getElementById("adminPlayerManager").classList.toggle("hidden", !admin);
+      document.getElementById("modeBanner").classList.toggle("hidden", admin);
+
+      const adminBtn = document.getElementById("adminBtn");
+      const adminIcon = document.getElementById("adminIcon");
+      const adminBtnText = document.getElementById("adminBtnText");
+
+      if (admin) {
+        adminBtn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-volt/15 border border-volt/40 text-xs font-bold text-volt transition";
+        adminIcon.textContent = "🔓";
+        adminBtnText.textContent = "Admin";
+      } else {
+        adminBtn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-300 transition";
+        adminIcon.textContent = "🔒";
+        adminBtnText.textContent = "Admin";
+      }
+    }
+
+    function renderPlayerSelects() {
+      const homeSel = document.getElementById("homePlayerSelect");
+      const awaySel = document.getElementById("awayPlayerSelect");
+      const prevHome = homeSel.value;
+      const prevAway = awaySel.value;
+
+      const options = state.players.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("");
+      homeSel.innerHTML = options;
+      awaySel.innerHTML = options;
+
+      if (state.players.includes(prevHome)) homeSel.value = prevHome;
+      if (state.players.includes(prevAway)) {
+        awaySel.value = prevAway;
+      } else if (state.players.length > 1) {
+        awaySel.value = state.players[1];
+      }
+    }
+
+    function renderStandings() {
+      const rows = computeStandings();
+      const tbody = document.getElementById("standingsBody");
+      const admin = isAdmin();
+
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="py-8 text-center text-slate-500 text-sm">No players added yet.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map((r, idx) => {
+        const rankBadge = idx === 0 && r.mp > 0
+          ? `<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-volt text-pitch-950 font-display font-bold text-xs">1</span>`
+          : `<span class="text-slate-400 font-bold pl-1.5">${idx + 1}</span>`;
+
+        const gdFormatted = r.gd > 0 ? `+${r.gd}` : `${r.gd}`;
+        const gdColor = r.gd > 0 ? "text-emerald-400" : r.gd < 0 ? "text-rose-400" : "text-slate-400";
+
+        const formBadges = r.form.slice(-5).map(res => {
+          const cls = res === "W" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                    : res === "D" ? "bg-slate-500/20 text-slate-300 border-slate-500/30"
+                    : "bg-rose-500/20 text-rose-400 border-rose-500/30";
+          return `<span class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold border ${cls}">${res}</span>`;
+        }).join("");
+
+        const deleteBtn = admin
+          ? `<button onclick="removePlayer('${escapeJs(r.name)}')" title="Remove Player" class="ml-2 text-slate-500 hover:text-rose-400 text-xs">✕</button>`
+          : "";
+
+        return `
+          <tr class="hover:bg-white/[0.02] transition">
+            <td class="py-3.5 pl-5 pr-2">${rankBadge}</td>
+            <td class="py-3.5 px-3 font-bold text-white whitespace-nowrap">
+              ${escapeHtml(r.name)}${deleteBtn}
+            </td>
+            <td class="py-3.5 px-2 text-center text-slate-300">${r.mp}</td>
+            <td class="py-3.5 px-2 text-center text-emerald-400 font-semibold">${r.w}</td>
+            <td class="py-3.5 px-2 text-center text-slate-400">${r.d}</td>
+            <td class="py-3.5 px-2 text-center text-rose-400">${r.l}</td>
+            <td class="py-3.5 px-2 text-center text-slate-300 hidden sm:table-cell">${r.gf}</td>
+            <td class="py-3.5 px-2 text-center text-slate-300 hidden sm:table-cell">${r.ga}</td>
+            <td class="py-3.5 px-2 text-center font-semibold ${gdColor}">${gdFormatted}</td>
+            <td class="py-3.5 px-3 text-center font-display font-bold text-base text-volt">${r.pts}</td>
+            <td class="py-3.5 pl-2 pr-5 text-right hidden md:table-cell">
+              <div class="inline-flex items-center gap-1">${formBadges || '<span class="text-xs text-slate-600">—</span>'}</div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function renderMatches() {
+      const list = document.getElementById("matchHistoryList");
+      const countEl = document.getElementById("historyCount");
+      const admin = isAdmin();
+
+      countEl.textContent = `${state.matches.length} ${state.matches.length === 1 ? "match" : "matches"}`;
+
+      if (state.matches.length === 0) {
+        list.innerHTML = `
+          <div class="text-center py-10 px-4 rounded-xl border border-dashed border-white/10 text-slate-500 text-sm">
+            No matches played yet in the Kanaba Cup.
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = state.matches.map(m => {
+        const homeWon = m.homeScore > m.awayScore;
+        const awayWon = m.awayScore > m.homeScore;
+        const dateStr = m.timestamp
+          ? new Date(m.timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+          : "";
+
+        const tags = [
+          m.aet ? "AET" : "",
+          m.pen ? "PEN" : "",
+          m.note ? escapeHtml(m.note) : ""
+        ].filter(Boolean).join(" · ");
+
+        const deleteBtn = admin
+          ? `<button onclick="deleteMatch('${escapeJs(m.id)}')" class="text-xs text-slate-500 hover:text-rose-400 px-2 py-1 rounded hover:bg-rose-500/10 transition">Delete</button>`
+          : "";
+
+        return `
+          <div class="bg-pitch-900/90 border border-white/5 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center justify-between sm:justify-start gap-3 flex-1">
+              <!-- Home -->
+              <div class="flex-1 sm:text-right">
+                <p class="font-bold text-sm ${homeWon ? "text-volt" : "text-white"}">${escapeHtml(m.homePlayer)}</p>
+                ${m.homeClub ? `<p class="text-[11px] text-slate-400">${escapeHtml(m.homeClub)}</p>` : ""}
+              </div>
+
+              <!-- Score Pill -->
+              <div class="px-3.5 py-1.5 rounded-lg bg-pitch-950 border border-white/10 font-display font-bold text-lg tracking-wider text-white shrink-0">
+                <span class="${homeWon ? "text-volt" : ""}">${m.homeScore}</span>
+                <span class="text-slate-600 mx-1">-</span>
+                <span class="${awayWon ? "text-cyan" : ""}">${m.awayScore}</span>
+              </div>
+
+              <!-- Away -->
+              <div class="flex-1 text-left">
+                <p class="font-bold text-sm ${awayWon ? "text-cyan" : "text-white"}">${escapeHtml(m.awayPlayer)}</p>
+                ${m.awayClub ? `<p class="text-[11px] text-slate-400">${escapeHtml(m.awayClub)}</p>` : ""}
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5 text-[11px] text-slate-400">
+              <div class="truncate">
+                <span>${dateStr}</span>
+                ${tags ? `<span class="ml-2 text-volt/90 font-medium">${tags}</span>` : ""}
+              </div>
+              ${deleteBtn}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderStats() {
+      const totalMatches = state.matches.length;
+      const totalGoals = state.matches.reduce((sum, m) => sum + (m.homeScore || 0) + (m.awayScore || 0), 0);
+      const avg = totalMatches > 0 ? (totalGoals / totalMatches).toFixed(1) : "0.0";
+
+      document.getElementById("statMatches").textContent = totalMatches;
+      document.getElementById("statGoals").textContent = totalGoals;
+      document.getElementById("statAvgGoals").textContent = avg;
+    }
+
+    // Modal & Status Helpers
+    function openAdminModal() {
+      const admin = isAdmin();
+      document.getElementById("adminLoginForm").classList.toggle("hidden", admin);
+      document.getElementById("adminLoggedInView").classList.toggle("hidden", !admin);
+      document.getElementById("adminAuthError").classList.add("hidden");
+
+      if (admin) {
+        document.getElementById("loggedInEmail").textContent = auth.email || "Admin";
+      } else {
+        document.getElementById("fbApiKeyInput").value = auth.apiKey;
+        document.getElementById("adminEmailInput").value = auth.email;
+      }
+      document.getElementById("adminModal").classList.remove("hidden");
+    }
+
+    function closeAdminModal() {
+      document.getElementById("adminModal").classList.add("hidden");
+    }
+
+    function setSyncStatus(mode, text) {
+      const badge = document.getElementById("syncBadge");
+      const dot = document.getElementById("syncDot");
+      const label = document.getElementById("syncText");
+      label.textContent = text;
+
+      if (mode === "live") {
+        badge.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold";
+        dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+      } else if (mode === "syncing") {
+        badge.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold";
+        dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+      } else {
+        badge.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold";
+        dot.className = "w-2 h-2 rounded-full bg-rose-400";
+      }
+    }
+
+    function showAlert(msg) {
+      document.getElementById("alertMessage").textContent = msg;
+      document.getElementById("alertBanner").classList.remove("hidden");
+    }
+
+    function hideAlert() {
+      document.getElementById("alertBanner").classList.add("hidden");
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, s => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[s]));
+    }
+
+    function escapeJs(str) {
+      return String(str).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    }
+
+    // Boot & Poll Every 10 Seconds for Live Updates
+    renderAll();
+    fetchCloudData();
+    setInterval(fetchCloudData, 10000);
+  </script>
+</body>
+</html>
